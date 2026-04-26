@@ -14,7 +14,7 @@ import random
 from datetime import datetime
 
 import requests
-from pytrends.request import TrendReq
+from serpapi import GoogleSearch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -63,17 +63,47 @@ def init_db():
     logger.info("Database initialized: %s", DB_NAME)
 
 
+FALLBACK_KEYWORDS = ["baju murah", "skincare", "hp murah", "earbuds", "perabot rumah"]
+
+
 def get_trending_keywords():
-    """Get top 5 Google Trends keywords for Indonesia today."""
+    """Get top 5 Google Trends keywords for Indonesia today using SerpAPI."""
+    api_key = os.getenv("SERPAPI_KEY")
+    if not api_key:
+        logger.warning("SERPAPI_KEY not set. Using fallback keywords.")
+        return FALLBACK_KEYWORDS
+
     try:
-        pytrends = TrendReq(hl="id-ID", tz=420)
-        trending = pytrends.trending_searches(pn="indonesia")
-        keywords = trending[0].tolist()[:5]
-        logger.info("Trending keywords: %s", keywords)
+        params = {
+            "engine": "google_trends_trending_now",
+            "frequency": "daily",
+            "geo": "ID",
+            "api_key": api_key,
+        }
+        search = GoogleSearch(params)
+        results = search.get_dict()
+
+        keywords = []
+        daily_searches = results.get("daily_searches", [])
+        for day in daily_searches:
+            for search_item in day.get("searches", []):
+                query = search_item.get("query", {}).get("text", "")
+                if query:
+                    keywords.append(query)
+                if len(keywords) >= 5:
+                    break
+            if len(keywords) >= 5:
+                break
+
+        if not keywords:
+            logger.warning("No trending keywords from SerpAPI. Using fallback.")
+            return FALLBACK_KEYWORDS
+
+        logger.info("Trending keywords (SerpAPI): %s", keywords)
         return keywords
     except Exception as e:
-        logger.warning("Failed to fetch Google Trends: %s. Using fallback keywords.", e)
-        return ["promo", "diskon", "flash sale", "skincare", "gadget"]
+        logger.warning("Failed to fetch Google Trends via SerpAPI: %s. Using fallback keywords.", e)
+        return FALLBACK_KEYWORDS
 
 
 def _build_headers():
