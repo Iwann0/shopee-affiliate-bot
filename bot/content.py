@@ -71,7 +71,7 @@ def _get_image_url(topic: str, width: int = 800, height: int = 418) -> str:
     Returns a direct image URL sized for Twitter cards (roughly 1.91:1).
     Each topic always maps to the same image via the seed parameter.
     """
-    seed = urllib.parse.quote(topic.lower().strip())
+    seed = urllib.parse.quote(topic.lower().strip(), safe="")
     return f"https://picsum.photos/seed/{seed}/{width}/{height}"
 
 
