@@ -1,3 +1,6 @@
+// HTML escape helper to prevent XSS
+function esc(s) { const d = document.createElement("div"); d.textContent = String(s); return d.innerHTML; }
+
 // Tab switching
 document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
@@ -26,10 +29,10 @@ async function loadProfile() {
             return;
         }
         document.getElementById("profile-badge").innerHTML = `
-            <span class="username">@${data.username}</span>
+            <span class="username">@${esc(data.username)}</span>
             <div class="stats">
-                <span class="stat"><span class="stat-num">${data.followers}</span> followers</span>
-                <span class="stat"><span class="stat-num">${data.following}</span> following</span>
+                <span class="stat"><span class="stat-num">${esc(data.followers)}</span> followers</span>
+                <span class="stat"><span class="stat-num">${esc(data.following)}</span> following</span>
             </div>`;
 
         document.getElementById("stat-followers").textContent = data.followers;
@@ -40,7 +43,7 @@ async function loadProfile() {
             const tipsEl = document.getElementById("growth-tips");
             tipsEl.style.display = "block";
             document.getElementById("tips-list").innerHTML =
-                data.tips.map(t => `<div class="tip">${t}</div>`).join("");
+                data.tips.map(t => `<div class="tip">${esc(t)}</div>`).join("");
         }
     } catch (e) {
         document.getElementById("profile-badge").innerHTML =
@@ -68,7 +71,7 @@ async function loadTrends() {
             document.getElementById("twitter-trends").innerHTML = `
                 <ol class="trend-list">
                     ${data.twitter_trends.map((t, i) =>
-                        `<li><span class="trend-rank">${i + 1}</span><span class="trend-name">${t}</span></li>`
+                        `<li><span class="trend-rank">${i + 1}</span><span class="trend-name">${esc(t)}</span></li>`
                     ).join("")}
                 </ol>`;
         } else {
@@ -80,7 +83,7 @@ async function loadTrends() {
             const sorted = Object.entries(data.interest_scores).sort((a, b) => b[1] - a[1]);
             document.getElementById("interest-scores").innerHTML = sorted.map(([k, v]) => `
                 <div class="interest-item">
-                    <span class="interest-label">${k}</span>
+                    <span class="interest-label">${esc(k)}</span>
                     <div class="interest-bar-bg">
                         <div class="interest-bar" style="width:${v}%"></div>
                     </div>
@@ -95,11 +98,11 @@ async function loadTrends() {
             let html = "";
             for (const [keyword, queries] of Object.entries(data.rising_queries)) {
                 if (queries.length === 0) continue;
-                html += `<div class="rising-group"><h4>${keyword}</h4>`;
+                html += `<div class="rising-group"><h4>${esc(keyword)}</h4>`;
                 html += queries.slice(0, 5).map(q => `
                     <div class="rising-item">
-                        <span>${q.query}</span>
-                        <span class="rising-value">+${q.value}%</span>
+                        <span>${esc(q.query)}</span>
+                        <span class="rising-value">+${esc(q.value)}%</span>
                     </div>`).join("");
                 html += "</div>";
             }
@@ -129,10 +132,10 @@ async function loadDrafts() {
         document.getElementById("drafts-list").innerHTML = data.map(d => `
             <div class="draft-card" onclick="copyDraft(this)">
                 <div class="draft-header">
-                    <span class="draft-topic">${d.topic}</span>
-                    <span class="draft-chars">${d.char_count} chars</span>
+                    <span class="draft-topic">${esc(d.topic)}</span>
+                    <span class="draft-chars">${esc(d.char_count)} chars</span>
                 </div>
-                <div class="draft-text">${d.full_tweet}</div>
+                <div class="draft-text">${esc(d.full_tweet)}</div>
                 <div class="copy-hint">Click to copy</div>
             </div>`).join("");
     } catch (e) {
@@ -161,12 +164,12 @@ async function loadAccounts() {
 
         document.getElementById("accounts-list").innerHTML = data.map(s => `
             <div class="account-card">
-                <h4>${s.keyword}</h4>
+                <h4>${esc(s.keyword)}</h4>
                 <div class="search-query" onclick="copySearch(this)" title="Click to copy">
-                    ${s.search_query}
+                    ${esc(s.search_query)}
                 </div>
-                <div class="strategy">${s.strategy}</div>
-                <ul>${s.account_types.map(t => `<li>${t}</li>`).join("")}</ul>
+                <div class="strategy">${esc(s.strategy)}</div>
+                <ul>${s.account_types.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
             </div>`).join("");
     } catch (e) {
         document.getElementById("accounts-list").innerHTML =
