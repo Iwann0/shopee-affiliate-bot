@@ -1,135 +1,92 @@
-# Shopee Affiliate Bot 🤖
+# Twitter/X Growth Bot
 
-Bot otomatis untuk promosi produk Shopee Indonesia di Twitter menggunakan link afiliasi.
+Automated Twitter/X bot that engages with trending topics, grows your followers organically, and helps monetize through sponsorships.
 
-## Fitur
+## Features
 
-- **Scraper** (`shopee_scraper.py`): Scrape produk trending/bestselling dari Shopee Indonesia (fashion wanita, skincare, elektronik, perlengkapan rumah). Filter rating >= 4.3, terjual > 100. Integrasi Google Trends Indonesia.
-- **Content Generator** (`content_generator.py`): Generate tweet dalam Bahasa Indonesia dengan 4 variasi style. Otomatis tambahkan affiliate link.
-- **Twitter Poster** (`twitter_poster.py`): Post tweet otomatis via Twitter API v2 (Tweepy).
-- **Scheduler** (`main.py`): Jadwal otomatis menggunakan APScheduler.
+- **Auto-Engagement** — Likes, retweets, and replies to trending tweets in your niche
+- **Content Posting** — Generates and posts original tweets about trending topics
+- **Smart Follow/Unfollow** — Follows relevant users, unfollows non-followers after a grace period
+- **Rate Limiting** — Built-in rate limiter to stay within Twitter API limits and avoid bans
+- **Analytics Tracking** — Records follower growth, engagement metrics, and generates reports
+- **Configurable Scheduling** — All intervals and thresholds are configurable via environment variables
 
-## Jadwal Posting
+## Quick Start
 
-| Waktu WIB | Aktivitas |
-|---|---|
-| 06:00 | Scrape produk baru + generate konten |
-| 07:00 | Post tweet |
-| 12:00 | Post tweet |
-| 18:00 | Post tweet |
-| 21:00 | Post tweet |
-
-## Deployment di Railway.app
-
-### 1. Fork / Clone Repository
+### 1. Clone and install
 
 ```bash
-git clone https://github.com/Iwann0/shopee-affiliate-bot.git
+git clone https://github.com/Iwann0/twitter-growth-bot.git
+cd twitter-growth-bot
+pip install -e .
 ```
 
-### 2. Buat Project di Railway
+### 2. Configure environment
 
-1. Buka [railway.app](https://railway.app) dan login
-2. Klik **"New Project"** → **"Deploy from GitHub repo"**
-3. Pilih repository `shopee-affiliate-bot`
-
-### 3. Set Environment Variables
-
-Di Railway dashboard, buka **Settings** → **Variables**, tambahkan:
-
-| Variable | Keterangan |
-|---|---|
-| `TWITTER_BEARER_TOKEN` | Bearer token dari Twitter Developer Portal |
-| `TWITTER_API_KEY` | Consumer API Key |
-| `TWITTER_API_SECRET` | Consumer API Secret |
-| `TWITTER_ACCESS_TOKEN` | Access Token |
-| `TWITTER_ACCESS_TOKEN_SECRET` | Access Token Secret |
-| `SHOPEE_AFFILIATE_ID` | ID afiliasi Shopee (default: 11320831661) |
-
-### 4. Deploy
-
-Railway akan otomatis detect `Procfile` dan menjalankan bot sebagai worker process.
-
-## Monitoring Logs
-
-Di Railway dashboard:
-1. Buka project → klik service
-2. Tab **"Logs"** untuk melihat log real-time
-3. Bot akan log setiap aktivitas: scraping, generate konten, posting tweet
-
-## Manual Trigger
-
-### Jalankan semua (scrape + generate + post)
-
-```bash
-python main.py --run-now
-```
-
-### Jalankan komponen terpisah
-
-```bash
-# Scrape produk saja
-python shopee_scraper.py
-
-# Generate konten saja
-python content_generator.py
-
-# Post tweet berikutnya
-python twitter_poster.py
-```
-
-## Development Lokal
-
-### 1. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Setup environment variables
+Copy the example env file and fill in your Twitter API credentials:
 
 ```bash
 cp .env.example .env
-# Edit .env dengan kredensial kamu
+# Edit .env with your Twitter API credentials
 ```
 
-### 3. Jalankan bot
+You need a Twitter Developer account with **Elevated** access for full functionality.
+Get your API keys at: https://developer.twitter.com/en/portal/dashboard
+
+### 3. Run the bot
 
 ```bash
-# Mode scheduler (production)
-python main.py
-
-# Mode manual (test)
-python main.py --run-now
+python -m bot.main
 ```
 
-## Struktur Project
+## Configuration
 
-```
-shopee-affiliate-bot/
-├── main.py              # Entry point + scheduler
-├── shopee_scraper.py    # Component 1: Shopee scraper
-├── content_generator.py # Component 2: Tweet generator
-├── twitter_poster.py    # Component 3: Twitter poster
-├── requirements.txt     # Python dependencies
-├── Procfile            # Railway worker process
-├── railway.json        # Railway deployment config
-├── .env.example        # Template environment variables
-├── .gitignore          # Git ignore rules
-└── README.md           # Dokumentasi
-```
+All settings are configurable via environment variables (see `.env.example`):
 
-## Tech Stack
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TWITTER_API_KEY` | — | Twitter API key (required) |
+| `TWITTER_API_SECRET` | — | Twitter API secret (required) |
+| `TWITTER_ACCESS_TOKEN` | — | OAuth access token (required) |
+| `TWITTER_ACCESS_TOKEN_SECRET` | — | OAuth access token secret (required) |
+| `TWITTER_BEARER_TOKEN` | — | Bearer token (required) |
+| `NICHE_KEYWORDS` | `tech,programming,AI,startup,crypto` | Comma-separated topics to engage with |
+| `MAX_LIKES_PER_HOUR` | `15` | Max likes per hour |
+| `MAX_RETWEETS_PER_HOUR` | `10` | Max retweets per hour |
+| `MAX_REPLIES_PER_HOUR` | `5` | Max replies per hour |
+| `MAX_FOLLOWS_PER_HOUR` | `10` | Max follows/unfollows per hour |
+| `ENGAGE_INTERVAL_MINUTES` | `30` | How often to engage with tweets |
+| `POST_INTERVAL_MINUTES` | `120` | How often to post original content |
+| `FOLLOW_INTERVAL_MINUTES` | `60` | How often to run follow strategy |
+| `UNFOLLOW_INTERVAL_MINUTES` | `360` | How often to unfollow non-followers |
+| `UNFOLLOW_AFTER_DAYS` | `3` | Days to wait before unfollowing non-followers |
+| `MAX_FOLLOWING_RATIO` | `1.5` | Max following/followers ratio |
 
-- **Python 3.11+**
-- **Tweepy** - Twitter API v2
-- **APScheduler** - Job scheduling
-- **Requests** + **BeautifulSoup4** - Web scraping
-- **pytrends** - Google Trends API
-- **SQLite** - Local database
+## Deploy on Railway
 
-## Catatan
+1. Connect this repo to [Railway](https://railway.app)
+2. Add your Twitter API credentials as environment variables
+3. Railway will detect the `Procfile` and start the bot as a worker
 
-- Shopee API bisa berubah sewaktu-waktu. Bot menyediakan mock data sebagai fallback untuk development.
-- Rate limit Twitter: max 50 tweets/24 jam (free tier). Jadwal 4x/hari aman dari rate limit.
-- Pastikan akun Twitter Developer sudah memiliki akses "Read and Write".
+## How It Works
+
+1. **Startup** — Authenticates with Twitter, runs an initial engagement round and posts a tweet
+2. **Engagement Loop** — Every 30 minutes, searches for trending tweets in your niche, likes/retweets/replies
+3. **Content Loop** — Every 2 hours, generates and posts an original tweet about a trending topic
+4. **Follow Loop** — Every hour, follows users who engage with niche content
+5. **Unfollow Loop** — Every 6 hours, unfollows users who haven't followed back
+6. **Analytics** — Every 12 hours, records a snapshot of your account metrics
+
+## Monetization Strategy
+
+Once you grow to 1,000+ engaged followers:
+
+1. **Sponsored tweets** — Brands pay for tweets/threads about their products
+2. **Affiliate marketing** — Share affiliate links in your niche
+3. **Twitter/X Premium** — Earn from ad revenue sharing
+4. **Consulting leads** — Use your profile to attract clients
+5. **Product promotion** — Promote your own digital products
+
+## License
+
+MIT
