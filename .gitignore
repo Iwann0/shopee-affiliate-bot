@@ -6,7 +6,6 @@ __pycache__/
 *.db
 pending_posts.json
 analytics.json
-follow_log.json
 .venv/
 venv/
 *.egg-info/

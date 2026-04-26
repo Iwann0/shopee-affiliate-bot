@@ -1,62 +1,129 @@
-"""Discover trending topics and find engaging tweets."""
+"""Discover trending topics using free data sources (Google Trends + web scraping)."""
 
 import logging
-import random
+import re
 
-import tweepy
+import requests
+from pytrends.request import TrendReq
 
 from bot.config import Config
 
 logger = logging.getLogger(__name__)
 
-# Global WOEID for worldwide trends
-WOEID_WORLDWIDE = 1
+_TRENDS24_URL = "https://trends24.in/"
+_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
 
 
-def search_niche_tweets(
-    client: tweepy.Client,
-    max_results_per_keyword: int = 10,
-) -> list[tweepy.Tweet]:
-    """Search for recent popular tweets matching niche keywords."""
-    all_tweets: list[tweepy.Tweet] = []
-    keywords = Config.NICHE_KEYWORDS
+def get_google_trends_rising(keywords: list[str] | None = None) -> dict[str, list[dict]]:
+    """Get rising related queries from Google Trends for each keyword.
 
-    for keyword in keywords:
-        try:
-            query = f"{keyword} -is:retweet -is:reply lang:en"
-            resp = client.search_recent_tweets(
-                query=query,
-                max_results=max_results_per_keyword,
-                tweet_fields=["public_metrics", "author_id", "created_at"],
-                sort_order="relevancy",
-            )
-            if resp.data:
-                tweets = [
-                    t
-                    for t in resp.data
-                    if t.public_metrics
-                    and t.public_metrics.get("like_count", 0) >= Config.ENGAGEMENT_MIN_LIKES
-                ]
-                all_tweets.extend(tweets)
-                logger.info("Found %d tweets for keyword '%s'", len(tweets), keyword)
-        except tweepy.TweepyException as e:
-            logger.warning("Error searching for '%s': %s", keyword, e)
-
-    random.shuffle(all_tweets)
-    return all_tweets
-
-
-def get_trending_keywords(client: tweepy.Client) -> list[str]:
-    """Get currently trending keywords from Twitter.
-
-    Falls back to niche keywords if trends endpoint is unavailable (requires
-    elevated API access).
+    Returns a dict mapping each keyword to a list of
+    ``{"query": str, "value": int}`` dicts sorted by rising value.
     """
-    try:
-        resp = client.get_trending_topics(id=WOEID_WORLDWIDE)
-        if resp and hasattr(resp, "data") and resp.data:
-            return [trend["name"] for trend in resp.data[:20]]
-    except (tweepy.TweepyException, AttributeError) as e:
-        logger.info("Trends endpoint unavailable (%s), using niche keywords", e)
+    keywords = keywords or Config.NICHE_KEYWORDS
+    results: dict[str, list[dict]] = {}
 
-    return Config.NICHE_KEYWORDS
+    for kw in keywords:
+        try:
+            pytrends = TrendReq(hl="en-US", tz=360)
+            pytrends.build_payload([kw], timeframe="now 7-d")
+            related = pytrends.related_queries()
+
+            rising = related.get(kw, {}).get("rising")
+            if rising is not None and not rising.empty:
+                items = rising.to_dict("records")
+                results[kw] = items
+                logger.info(
+                    "Google Trends: %d rising queries for '%s'", len(items), kw
+                )
+            else:
+                results[kw] = []
+                logger.info("Google Trends: no rising queries for '%s'", kw)
+
+        except Exception as e:
+            logger.warning("Google Trends error for '%s': %s", kw, e)
+            results[kw] = []
+
+    return results
+
+
+def get_google_trends_interest(keywords: list[str] | None = None) -> dict[str, float]:
+    """Get current relative interest scores for keywords (0-100).
+
+    Higher score means the keyword is trending more right now.
+    """
+    keywords = keywords or Config.NICHE_KEYWORDS
+    try:
+        pytrends = TrendReq(hl="en-US", tz=360)
+        pytrends.build_payload(keywords[:5], timeframe="now 1-d")
+        interest = pytrends.interest_over_time()
+
+        if interest.empty:
+            return {}
+
+        latest = interest.iloc[-1]
+        scores = {kw: float(latest.get(kw, 0)) for kw in keywords[:5]}
+        logger.info("Interest scores: %s", scores)
+        return scores
+
+    except Exception as e:
+        logger.warning("Google Trends interest error: %s", e)
+        return {}
+
+
+def scrape_twitter_trends() -> list[str]:
+    """Scrape current Twitter/X trending topics from trends24.in (free)."""
+    try:
+        resp = requests.get(
+            _TRENDS24_URL,
+            headers={"User-Agent": _USER_AGENT},
+            timeout=15,
+        )
+        resp.raise_for_status()
+
+        # Extract trend names from the HTML
+        pattern = r'<a[^>]*class="[^"]*trend-link[^"]*"[^>]*>([^<]+)</a>'
+        matches = re.findall(pattern, resp.text)
+
+        if matches:
+            # Deduplicate while preserving order
+            seen: set[str] = set()
+            unique: list[str] = []
+            for m in matches:
+                cleaned = m.strip()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+                    unique.append(cleaned)
+            logger.info("Scraped %d Twitter trends from trends24.in", len(unique))
+            return unique[:30]
+
+        logger.info("No trends found from trends24.in scraping")
+        return []
+
+    except Exception as e:
+        logger.warning("Failed to scrape trends24.in: %s", e)
+        return []
+
+
+def get_all_trends() -> dict:
+    """Aggregate trends from all free sources into a single report.
+
+    Returns a dict with:
+    - twitter_trends: list of currently trending Twitter topics
+    - rising_queries: dict of keyword -> rising related queries
+    - interest_scores: dict of keyword -> interest score (0-100)
+    """
+    logger.info("Gathering trends from all sources...")
+
+    twitter_trends = scrape_twitter_trends()
+    rising_queries = get_google_trends_rising()
+    interest_scores = get_google_trends_interest()
+
+    return {
+        "twitter_trends": twitter_trends,
+        "rising_queries": rising_queries,
+        "interest_scores": interest_scores,
+    }

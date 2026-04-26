@@ -1,12 +1,9 @@
-"""Generate and post original tweets about trending topics."""
+"""Generate tweet drafts for manual posting based on trending topics."""
 
 import logging
 import random
 
-import tweepy
-
-from bot.rate_limiter import RateLimiter
-from bot.trending import get_trending_keywords
+from bot.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -74,31 +71,35 @@ def _get_hashtags(topic: str) -> str:
     return "#Trending"
 
 
-def post_trending_tweet(
-    client: tweepy.Client,
-    limiter: RateLimiter,
-) -> bool:
-    """Generate and post a tweet about a trending topic."""
-    if not limiter.can_act("post", 3):  # max 3 original posts per hour
-        logger.info("Post rate limit reached")
-        return False
+def generate_tweet_drafts(
+    topics: list[str] | None = None,
+    count: int = 5,
+) -> list[dict[str, str]]:
+    """Generate tweet drafts for given topics (or niche keywords).
 
-    trending = get_trending_keywords(client)
-    topic = random.choice(trending)
+    Returns a list of dicts with ``topic``, ``tweet``, ``hashtags``,
+    ``full_tweet``, and ``char_count`` fields.
+    """
+    topics = topics or Config.NICHE_KEYWORDS
+    drafts: list[dict[str, str]] = []
 
-    tweet_text = random.choice(TWEET_TEMPLATES).format(topic=topic)
-    hashtags = _get_hashtags(topic)
-    full_tweet = f"{tweet_text}\n\n{hashtags}"
+    for _ in range(count):
+        topic = random.choice(topics)
+        template = random.choice(TWEET_TEMPLATES)
+        tweet_text = template.format(topic=topic)
+        hashtags = _get_hashtags(topic)
+        full_tweet = f"{tweet_text}\n\n{hashtags}"
 
-    # Ensure tweet is within 280 chars
-    if len(full_tweet) > 280:
-        full_tweet = full_tweet[:277] + "..."
+        if len(full_tweet) > 280:
+            full_tweet = full_tweet[:277] + "..."
 
-    try:
-        client.create_tweet(text=full_tweet)
-        limiter.record("post")
-        logger.info("Posted tweet about '%s'", topic)
-        return True
-    except tweepy.TweepyException as e:
-        logger.error("Failed to post tweet: %s", e)
-        return False
+        drafts.append({
+            "topic": topic,
+            "tweet": tweet_text,
+            "hashtags": hashtags,
+            "full_tweet": full_tweet,
+            "char_count": str(len(full_tweet)),
+        })
+
+    logger.info("Generated %d tweet drafts", len(drafts))
+    return drafts
