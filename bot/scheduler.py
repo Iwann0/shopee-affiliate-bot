@@ -15,10 +15,13 @@ from bot.rate_limiter import RateLimiter
 logger = logging.getLogger(__name__)
 
 
-def create_scheduler(client: tweepy.Client, my_user_id: str) -> BlockingScheduler:
+def create_scheduler(
+    client: tweepy.Client,
+    my_user_id: str,
+    limiter: RateLimiter,
+) -> BlockingScheduler:
     """Create and configure the bot scheduler with all jobs."""
     scheduler = BlockingScheduler()
-    limiter = RateLimiter()
 
     # Engagement job - like, retweet, reply to trending tweets
     scheduler.add_job(

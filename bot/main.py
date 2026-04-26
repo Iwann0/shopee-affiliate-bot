@@ -68,7 +68,7 @@ def main() -> None:
         Config.ANALYTICS_INTERVAL_MINUTES,
     )
 
-    scheduler = create_scheduler(client, my_user_id)
+    scheduler = create_scheduler(client, my_user_id, limiter)
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
