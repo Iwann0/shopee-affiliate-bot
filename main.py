@@ -82,6 +82,18 @@ def main():
     # Run scraper + generator immediately on startup
     daily_scrape_and_generate()
 
+    # Post first tweet immediately on startup to verify Twitter API works
+    logger.info("=" * 60)
+    logger.info("STARTUP POST: Attempting to post first tweet...")
+    try:
+        result = post_next_tweet()
+        if result:
+            logger.info("STARTUP POST: Tweet posted successfully!")
+        else:
+            logger.info("STARTUP POST: No tweet available to post or posting failed.")
+    except Exception as e:
+        logger.error("STARTUP POST: Failed with error: %s", e, exc_info=True)
+
     scheduler = BlockingScheduler()
 
     # Daily scrape + generate at 06:00 WIB = 23:00 UTC (previous day)
