@@ -1,0 +1,25 @@
+[project]
+name = "twitter-growth-bot"
+version = "1.0.0"
+description = "Twitter/X growth bot - auto-engage with trending topics, grow followers, monetize through sponsorships"
+requires-python = ">=3.10"
+dependencies = [
+    "tweepy>=4.14,<5",
+    "apscheduler>=3.10,<4",
+    "python-dotenv>=1.0,<2",
+    "requests>=2.31,<3",
+]
+
+[project.scripts]
+twitter-bot = "bot.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
