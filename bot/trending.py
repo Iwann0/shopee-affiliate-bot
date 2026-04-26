@@ -85,8 +85,8 @@ def scrape_twitter_trends() -> list[str]:
         resp.raise_for_status()
 
         # Extract trend names from the HTML
-        # class attribute may or may not be quoted
-        pattern = r'<a[^>]*class=["\']?trend-link["\']?[^>]*>([^<]+)</a>'
+        # Handle quoted/unquoted class and multi-class attributes
+        pattern = r"<a[^>]*class=[\"']?[^\"'>]*trend-link[^\"'>]*[\"']?[^>]*>([^<]+)</a>"
         matches = re.findall(pattern, resp.text)
 
         if matches:
