@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Growth Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Twitter Growth Dashboard</h1>
+            <div id="profile-badge" class="profile-badge">
+                <span class="loading">Loading profile...</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="tabs">
+        <button class="tab active" data-tab="trends">Trending</button>
+        <button class="tab" data-tab="drafts">Tweet Drafts</button>
+        <button class="tab" data-tab="accounts">Accounts</button>
+        <button class="tab" data-tab="analytics">Analytics</button>
+        <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+        <!-- TRENDS TAB -->
+        <section id="tab-trends" class="tab-content active">
+            <div class="section-header">
+                <h2>Trending Topics</h2>
+                <button class="btn btn-refresh" onclick="loadTrends()">Refresh</button>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Twitter/X Trending Now</h3>
+                    <div id="twitter-trends" class="loading">Loading trends...</div>
+                </div>
+                <div class="card">
+                    <h3>Google Trends Interest</h3>
+                    <div id="interest-scores" class="loading">Loading scores...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Rising Search Queries</h3>
+                <div id="rising-queries" class="loading">Loading queries...</div>
+            </div>
+        </section>
+
+        <!-- DRAFTS TAB -->
+        <section id="tab-drafts" class="tab-content">
+            <div class="section-header">
+                <h2>Tweet Drafts</h2>
+                <button class="btn btn-refresh" onclick="loadDrafts()">Generate New</button>
+            </div>
+            <p class="subtitle">Click any draft to copy it to your clipboard, then paste it on X.</p>
+            <div id="drafts-list" class="loading">Loading drafts...</div>
+        </section>
+
+        <!-- ACCOUNTS TAB -->
+        <section id="tab-accounts" class="tab-content">
+            <div class="section-header">
+                <h2>Accounts to Follow</h2>
+                <button class="btn btn-refresh" onclick="loadAccounts()">Refresh</button>
+            </div>
+            <div id="accounts-list" class="loading">Loading suggestions...</div>
+        </section>
+
+        <!-- ANALYTICS TAB -->
+        <section id="tab-analytics" class="tab-content">
+            <div class="section-header">
+                <h2>Growth Analytics</h2>
+            </div>
+            <div id="growth-tips" class="card" style="display:none">
+                <h3>Growth Tips</h3>
+                <div id="tips-list"></div>
+            </div>
+            <div class="grid-3" id="analytics-cards">
+                <div class="card stat-card">
+                    <div class="stat-label">Followers</div>
+                    <div class="stat-value" id="stat-followers">-</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-label">Following</div>
+                    <div class="stat-value" id="stat-following">-</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-label">Tweets</div>
+                    <div class="stat-value" id="stat-tweets">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Growth Summary</h3>
+                <div id="growth-summary" class="loading">Loading analytics...</div>
+            </div>
+            <div class="card">
+                <h3>Follower History</h3>
+                <div id="follower-chart"></div>
+            </div>
+        </section>
+
+        <!-- SETTINGS TAB -->
+        <section id="tab-settings" class="tab-content">
+            <div class="section-header">
+                <h2>Settings</h2>
+            </div>
+            <div class="card">
+                <h3>Niche Keywords</h3>
+                <p class="subtitle">Comma-separated topics the bot researches for you.</p>
+                <input type="text" id="settings-keywords" class="input-full" placeholder="tech,AI,crypto">
+                <div style="margin-top: 12px">
+                    <label>Drafts per cycle:
+                        <input type="number" id="settings-draft-count" class="input-small" min="1" max="20" value="5">
+                    </label>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()" style="margin-top: 16px">Save Settings</button>
+                <div id="settings-status"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

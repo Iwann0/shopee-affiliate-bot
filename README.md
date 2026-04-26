@@ -9,6 +9,7 @@ A **free** trend research and content intelligence tool that helps you grow your
 - **Suggests accounts to follow** — provides search strategies and account categories for growth
 - **Tracks your growth** — records follower/following/tweet snapshots over time
 - **Runs on autopilot** — periodic research cycles via scheduler (every 30 min by default)
+- **Web dashboard** — local web UI to browse trends, copy drafts, and track growth
 
 ## How It Works
 
@@ -35,8 +36,12 @@ pip install -e .
 cp .env.example .env
 # Edit .env with your Twitter API credentials
 
-# Run
+# Run (CLI mode)
 python -m bot.main
+
+# Run (Web Dashboard)
+python -m bot.main --dashboard
+# Open http://localhost:5000 in your browser
 ```
 
 ## Configuration
@@ -116,7 +121,8 @@ Once you grow your account using the research insights:
 
 ```
 bot/
-├── main.py          # Entry point — runs research + scheduler
+├── main.py          # Entry point — CLI + dashboard modes
+├── dashboard.py     # Flask web dashboard
 ├── trending.py      # Trend discovery (Google Trends + web scraping)
 ├── content.py       # Tweet draft generator
 ├── accounts.py      # Account follow suggestions
@@ -124,4 +130,9 @@ bot/
 ├── scheduler.py     # Periodic research scheduling
 ├── config.py        # Environment variable config
 └── twitter_client.py # Twitter API client setup
+templates/
+└── dashboard.html   # Dashboard HTML template
+static/
+├── style.css        # Dashboard styles
+└── app.js           # Dashboard JavaScript
 ```

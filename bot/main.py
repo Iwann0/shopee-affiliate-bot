@@ -1,7 +1,7 @@
 """Twitter Growth Bot — Trend Research & Content Intelligence Tool.
 
 Finds rising trends, generates tweet drafts, and suggests accounts to follow.
-All output is displayed in the console for you to act on manually.
+Run with ``--dashboard`` to start the web UI, or without flags for CLI mode.
 """
 
 import logging
@@ -154,4 +154,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if "--dashboard" in sys.argv:
+        from bot.dashboard import run_dashboard
+
+        port = 5000
+        for i, arg in enumerate(sys.argv):
+            if arg == "--port" and i + 1 < len(sys.argv):
+                port = int(sys.argv[i + 1])
+        run_dashboard(port=port)
+    else:
+        main()

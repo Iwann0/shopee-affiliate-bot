@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv>=1.0,<2",
     "requests>=2.31,<3",
     "pytrends>=4.9,<5",
+    "flask>=3.0,<4",
 ]
 
 [project.scripts]
