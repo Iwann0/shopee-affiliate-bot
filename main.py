@@ -14,7 +14,7 @@ import os
 import sys
 import signal
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -72,7 +72,7 @@ def main():
     """Main function — start the scheduler."""
     logger.info("=" * 60)
     logger.info("Shopee Affiliate Bot starting...")
-    logger.info("Current UTC time: %s", datetime.utcnow().isoformat())
+    logger.info("Current UTC time: %s", datetime.now(timezone.utc).isoformat())
 
     # Handle manual run mode
     if len(sys.argv) > 1 and sys.argv[1] == "--run-now":
@@ -114,8 +114,11 @@ def main():
     signal.signal(signal.SIGINT, shutdown)
 
     logger.info("Scheduler started. Jobs scheduled:")
-    for job in scheduler.get_jobs():
-        logger.info("  - %s (next run: %s)", job.name, job.next_run_time)
+    try:
+        for job in scheduler.get_jobs():
+            logger.info("  - %s", job.name)
+    except Exception as e:
+        logger.warning("Could not list jobs: %s", e)
 
     try:
         scheduler.start()
