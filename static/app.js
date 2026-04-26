@@ -130,13 +130,23 @@ async function loadDrafts() {
         }
 
         document.getElementById("drafts-list").innerHTML = data.map(d => `
-            <div class="draft-card" onclick="copyDraft(this)">
+            <div class="draft-card">
                 <div class="draft-header">
                     <span class="draft-topic">${esc(d.topic)}</span>
                     <span class="draft-chars">${esc(d.char_count)} chars</span>
                 </div>
-                <div class="draft-text">${esc(d.full_tweet)}</div>
-                <div class="copy-hint">Click to copy</div>
+                <div class="draft-body">
+                    <div class="draft-text-col">
+                        <div class="draft-text">${esc(d.full_tweet)}</div>
+                        <div class="draft-actions">
+                            <button class="btn btn-copy" onclick="copyDraft(this.closest('.draft-card'))">Copy Tweet</button>
+                            <a class="btn btn-download" href="${esc(d.image_url)}" target="_blank" download>Download Image</a>
+                        </div>
+                    </div>
+                    <div class="draft-image">
+                        <img src="${esc(d.image_url)}" alt="${esc(d.topic)}" loading="lazy">
+                    </div>
+                </div>
             </div>`).join("");
     } catch (e) {
         document.getElementById("drafts-list").innerHTML =

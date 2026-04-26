@@ -2,6 +2,7 @@
 
 import logging
 import random
+import urllib.parse
 
 from bot.config import Config
 
@@ -64,6 +65,16 @@ HASHTAG_MAP: dict[str, list[str]] = {
 }
 
 
+def _get_image_url(topic: str, width: int = 800, height: int = 418) -> str:
+    """Build a Lorem Picsum URL seeded by topic for a consistent image.
+
+    Returns a direct image URL sized for Twitter cards (roughly 1.91:1).
+    Each topic always maps to the same image via the seed parameter.
+    """
+    seed = urllib.parse.quote(topic.lower().strip())
+    return f"https://picsum.photos/seed/{seed}/{width}/{height}"
+
+
 def _get_hashtags(topic: str) -> str:
     for key, tags in HASHTAG_MAP.items():
         if key.lower() in topic.lower():
@@ -99,6 +110,7 @@ def generate_tweet_drafts(
             "hashtags": hashtags,
             "full_tweet": full_tweet,
             "char_count": str(len(full_tweet)),
+            "image_url": _get_image_url(topic),
         })
 
     logger.info("Generated %d tweet drafts", len(drafts))
