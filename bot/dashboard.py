@@ -119,7 +119,7 @@ def api_get_settings():
 def api_update_settings():
     try:
         data = request.get_json()
-        if not data:
+        if data is None:
             return jsonify({"error": "Invalid or missing JSON body"}), 400
         if "niche_keywords" in data:
             keywords = data["niche_keywords"]
