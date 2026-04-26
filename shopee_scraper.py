@@ -1,7 +1,10 @@
 """
 Component 1: Shopee Product Scraper
-Scrapes trending/bestselling products from Shopee Indonesia (shopee.co.id)
-and combines with Google Trends data to prioritize products.
+Fetches trending/bestselling products from Shopee Indonesia using:
+  1. Shopee Affiliate API (primary)
+  2. Scraping shopee.co.id/sp (fallback)
+  3. Mock data (last resort)
+Combines with Google Trends data (SerpAPI) to prioritize products.
 """
 
 import os
@@ -14,6 +17,7 @@ import random
 from datetime import datetime
 
 import requests
+from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -21,16 +25,9 @@ logger = logging.getLogger(__name__)
 
 DB_NAME = "shopee_products.db"
 
-# Shopee Indonesia API endpoints
-SHOPEE_API_BASE = "https://shopee.co.id/api/v4"
+AFFILIATE_ID = os.getenv("SHOPEE_AFFILIATE_ID", "11320831661")
 
-# Target category IDs on Shopee Indonesia
-CATEGORIES = {
-    "fashion_wanita": 11042256,
-    "skincare": 11042550,
-    "elektronik": 11042460,
-    "perlengkapan_rumah": 11042430,
-}
+SHOPEE_AFFILIATE_API = "https://affiliate.shopee.co.id/api/v2/product/get_offer_list"
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -38,6 +35,8 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
 ]
+
+FALLBACK_KEYWORDS = ["baju murah", "skincare", "hp murah", "earbuds", "perabot rumah"]
 
 
 def init_db():
@@ -63,14 +62,16 @@ def init_db():
     logger.info("Database initialized: %s", DB_NAME)
 
 
-FALLBACK_KEYWORDS = ["baju murah", "skincare", "hp murah", "earbuds", "perabot rumah"]
-
-
 def get_trending_keywords():
     """Get top 5 Google Trends keywords for Indonesia today using SerpAPI."""
     api_key = os.getenv("SERPAPI_KEY")
-    if not api_key:
-        logger.warning("SERPAPI_KEY not set. Using fallback keywords.")
+
+    # Debug logging for env var
+    if api_key:
+        logger.info("SERPAPI_KEY is set (length: %d, starts with: %s...)", len(api_key), api_key[:4])
+    else:
+        logger.warning("SERPAPI_KEY is NOT set in environment. Available env vars: %s",
+                        [k for k in os.environ.keys() if 'SERP' in k.upper() or 'API' in k.upper()])
         return FALLBACK_KEYWORDS
 
     try:
@@ -96,7 +97,7 @@ def get_trending_keywords():
                 break
 
         if not keywords:
-            logger.warning("No trending keywords from SerpAPI. Using fallback.")
+            logger.warning("No trending keywords from SerpAPI response. Using fallback.")
             return FALLBACK_KEYWORDS
 
         logger.info("Trending keywords (SerpAPI): %s", keywords)
@@ -113,50 +114,37 @@ def _build_headers():
         "Accept": "application/json",
         "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
         "Referer": "https://shopee.co.id/",
-        "X-Shopee-Language": "id",
-        "X-Requested-With": "XMLHttpRequest",
-        "X-API-SOURCE": "pc",
     }
 
 
-def scrape_category(category_name, category_id, limit=30):
-    """Scrape bestselling products from a Shopee category."""
+def scrape_affiliate_api():
+    """Fetch products from Shopee Affiliate API (primary method)."""
+    logger.info("Trying Shopee Affiliate API...")
     products = []
-    url = f"{SHOPEE_API_BASE}/search/search_items"
+
     params = {
-        "by": "sales",
-        "categoryids": category_id,
-        "limit": limit,
-        "newest": 0,
-        "order": "desc",
-        "page_type": "search",
-        "scenario": "PAGE_CATEGORY",
-        "version": 2,
+        "limit": 10,
+        "scenario": "hot_sale",
+        "af_siteid": AFFILIATE_ID,
     }
 
     try:
-        resp = requests.get(url, params=params, headers=_build_headers(), timeout=15)
+        resp = requests.get(SHOPEE_AFFILIATE_API, params=params, headers=_build_headers(), timeout=15)
+        logger.info("Affiliate API response status: %d", resp.status_code)
         resp.raise_for_status()
         data = resp.json()
 
-        items = data.get("items") or data.get("item") or []
+        items = data.get("data", {}).get("items", [])
         if not items:
-            items = data.get("data", {}).get("items", [])
+            items = data.get("items", [])
+        if not items:
+            items = data.get("data", {}).get("offers", [])
 
-        for entry in items:
-            item = entry.get("item_basic") or entry
+        for item in items:
             try:
-                name = item.get("name", "")
-                shop_id = item.get("shopid", 0)
-                item_id = item.get("itemid", 0)
-                rating = round(item.get("item_rating", {}).get("rating_star", 0), 1)
-                sold = item.get("historical_sold") or item.get("sold", 0)
-                price_raw = item.get("price", 0)
-                price_before_discount = item.get("price_before_discount", 0)
-
-                # Shopee prices are in units of 100000 (IDR)
-                original_price = price_before_discount // 100000 if price_before_discount else price_raw // 100000
-                discount_price = price_raw // 100000
+                name = item.get("product_name") or item.get("name", "")
+                original_price = int(item.get("original_price") or item.get("price", 0))
+                discount_price = int(item.get("discount_price") or item.get("sale_price", 0))
 
                 if original_price <= 0:
                     original_price = discount_price
@@ -165,34 +153,107 @@ def scrape_category(category_name, category_id, limit=30):
                 if original_price > 0 and original_price > discount_price:
                     discount_pct = round((1 - discount_price / original_price) * 100)
 
-                product_url = f"https://shopee.co.id/product/{shop_id}/{item_id}"
+                product_url = item.get("offer_link") or item.get("product_link") or item.get("url", "")
+                rating = float(item.get("rating") or item.get("item_rating", 0))
+                sold = int(item.get("sales") or item.get("sold", 0))
 
-                products.append({
-                    "name": name,
-                    "original_price": original_price,
-                    "discount_price": discount_price,
-                    "discount_pct": discount_pct,
-                    "url": product_url,
-                    "rating": rating,
-                    "sold": sold,
-                    "category": category_name,
-                })
+                if name and product_url:
+                    products.append({
+                        "name": name,
+                        "original_price": original_price,
+                        "discount_price": discount_price,
+                        "discount_pct": discount_pct,
+                        "url": product_url,
+                        "rating": rating,
+                        "sold": sold,
+                        "category": "affiliate_hot_sale",
+                    })
             except Exception as e:
-                logger.debug("Error parsing item: %s", e)
+                logger.debug("Error parsing affiliate item: %s", e)
                 continue
 
-        logger.info("Scraped %d products from %s", len(products), category_name)
+        logger.info("Affiliate API returned %d products", len(products))
     except requests.RequestException as e:
-        logger.error("Error scraping category %s: %s", category_name, e)
+        logger.warning("Shopee Affiliate API failed: %s", e)
     except (json.JSONDecodeError, KeyError) as e:
-        logger.error("Error parsing response for %s: %s", category_name, e)
+        logger.warning("Error parsing Affiliate API response: %s", e)
+
+    return products
+
+
+def scrape_shopee_sp():
+    """Fallback: scrape hot products from shopee.co.id/sp using BeautifulSoup."""
+    logger.info("Trying fallback: scraping shopee.co.id/sp...")
+    products = []
+
+    try:
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "id-ID,id;q=0.9",
+        }
+        resp = requests.get("https://shopee.co.id/sp", headers=headers, timeout=15)
+        logger.info("shopee.co.id/sp response status: %d", resp.status_code)
+        resp.raise_for_status()
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # Try to find product data in script tags (JSON embedded)
+        scripts = soup.find_all("script")
+        for script in scripts:
+            text = script.string or ""
+            if "product" in text.lower() and ("price" in text.lower() or "name" in text.lower()):
+                try:
+                    # Try to extract JSON data from script
+                    json_match = re.search(r'\{.*"product".*\}', text)
+                    if json_match:
+                        data = json.loads(json_match.group())
+                        logger.info("Found product data in script tag")
+                except (json.JSONDecodeError, AttributeError):
+                    continue
+
+        # Try to find product cards/items in HTML
+        product_elements = soup.select("[data-sqe='item'], .shopee-search-item-result__item, .flash-sale-item")
+        for elem in product_elements:
+            try:
+                name_el = elem.select_one("[data-sqe='name'], .item-name, .name")
+                price_el = elem.select_one("[data-sqe='price'], .item-price, .price")
+                link_el = elem.select_one("a[href]")
+
+                if name_el and price_el and link_el:
+                    name = name_el.get_text(strip=True)
+                    price_text = re.sub(r'[^\d]', '', price_el.get_text(strip=True))
+                    price = int(price_text) if price_text else 0
+                    url = link_el.get("href", "")
+                    if not url.startswith("http"):
+                        url = "https://shopee.co.id" + url
+
+                    products.append({
+                        "name": name,
+                        "original_price": price,
+                        "discount_price": price,
+                        "discount_pct": 0,
+                        "url": url,
+                        "rating": 4.5,
+                        "sold": 100,
+                        "category": "sp_hot",
+                    })
+            except Exception as e:
+                logger.debug("Error parsing SP element: %s", e)
+                continue
+
+        logger.info("shopee.co.id/sp returned %d products", len(products))
+    except requests.RequestException as e:
+        logger.warning("shopee.co.id/sp scraping failed: %s", e)
+    except Exception as e:
+        logger.warning("Error parsing shopee.co.id/sp: %s", e)
 
     return products
 
 
 def _generate_mock_products():
-    """Generate mock products when Shopee API is unavailable (e.g., during development)."""
-    logger.info("Generating mock products for development/testing...")
+    """Generate mock products when all APIs are unavailable (last resort fallback)."""
+    logger.info("Using mock products as last resort fallback...")
     mock_data = [
         {
             "name": "Wardah Lightening Day Cream 30g",
@@ -379,7 +440,7 @@ def save_to_db(products):
 
 
 def run_scraper():
-    """Main scraper function — entry point."""
+    """Main scraper function — entry point with cascading fallbacks."""
     logger.info("=" * 50)
     logger.info("Starting Shopee scraper...")
     init_db()
@@ -387,25 +448,26 @@ def run_scraper():
     # Step 1: Get trending keywords
     keywords = get_trending_keywords()
 
-    # Step 2: Scrape all categories
-    all_products = []
-    for cat_name, cat_id in CATEGORIES.items():
-        products = scrape_category(cat_name, cat_id)
-        all_products.extend(products)
-        time.sleep(random.uniform(1, 3))  # Polite delay between requests
+    # Step 2: Try Shopee Affiliate API first
+    all_products = scrape_affiliate_api()
 
-    # If API returned no results, use mock data for development
+    # Step 3: Fallback to scraping shopee.co.id/sp
     if not all_products:
-        logger.warning("No products from API. Using mock data for development.")
+        logger.warning("Affiliate API returned no products. Trying shopee.co.id/sp fallback...")
+        all_products = scrape_shopee_sp()
+
+    # Step 4: Last resort — mock data
+    if not all_products:
+        logger.warning("All APIs failed. Using mock data as last resort.")
         all_products = _generate_mock_products()
 
-    # Step 3: Filter by rating and sold count
+    # Step 5: Filter by rating and sold count
     filtered = filter_products(all_products, min_rating=4.3, min_sold=100)
 
-    # Step 4: Prioritize by trending keywords
+    # Step 6: Prioritize by trending keywords
     prioritized = prioritize_by_trends(filtered, keywords)
 
-    # Step 5: Save top 10 to DB
+    # Step 7: Save top 10 to DB
     saved = save_to_db(prioritized)
     logger.info("Scraper complete. %d products saved.", saved)
     return saved
