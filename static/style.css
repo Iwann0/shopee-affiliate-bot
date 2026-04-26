@@ -304,10 +304,8 @@ main {
     border: 1px solid #2f3336;
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 12px;
-    cursor: pointer;
+    margin-bottom: 16px;
     transition: all 0.2s;
-    position: relative;
 }
 
 .draft-card:hover {
@@ -318,7 +316,7 @@ main {
 .draft-card .draft-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .draft-card .draft-topic {
@@ -333,29 +331,74 @@ main {
     color: #8b98a5;
 }
 
+.draft-card .draft-body {
+    display: flex;
+    gap: 16px;
+}
+
+.draft-card .draft-text-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .draft-card .draft-text {
     white-space: pre-wrap;
     line-height: 1.5;
     font-size: 15px;
+    flex: 1;
 }
 
-.draft-card .copy-hint {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(29, 155, 240, 0.9);
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 8px;
+.draft-card .draft-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.draft-card .btn-copy,
+.draft-card .btn-download {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
     font-weight: 600;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
 }
 
-.draft-card:hover .copy-hint {
-    opacity: 1;
+.draft-card .btn-copy {
+    background: #1d9bf0;
+    color: #fff;
+}
+
+.draft-card .btn-copy:hover {
+    background: #1a8cd8;
+}
+
+.draft-card .btn-download {
+    background: #2f3336;
+    color: #e7e9ea;
+}
+
+.draft-card .btn-download:hover {
+    background: #3a3f44;
+}
+
+.draft-card .draft-image {
+    width: 200px;
+    min-height: 105px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.draft-card .draft-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
 }
 
 /* Account cards */
